@@ -65,6 +65,7 @@ GADDA-RL/
 ├── models/
 ├── README.md
 └── requirements.txt
+```
 
 <summary>🔎 View current research milestone</summary>
 
