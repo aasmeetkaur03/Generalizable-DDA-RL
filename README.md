@@ -61,13 +61,10 @@ GADDA-RL/
 ├── src/
 ├── results/
 ├── figures/
-├── tables/
 ├── models/
 ├── README.md
 └── requirements.txt
 ```
-
-<summary>🔎 View current research milestone</summary>
 
 ### Current Milestone — Generalization
 
