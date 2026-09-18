@@ -1,0 +1,5 @@
+Comparison,Cohen's d
+PPO DDA vs Static Easy,9.5783
+PPO DDA vs Static Medium,7.5446
+PPO DDA vs Static Hard,21.4925
+PPO DDA vs Rule-Based DDA,4.2157

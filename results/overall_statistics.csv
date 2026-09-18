@@ -1,0 +1,8 @@
+,Win Rate Error,Win Rate Error,Difficulty Change Std,Difficulty Change Std,Mean Absolute Difficulty Change,Mean Absolute Difficulty Change,Total Reward,Total Reward,Mean Win Rate,Mean Win Rate,Mean Difficulty,Mean Difficulty,Mean Error Rate,Mean Error Rate
+,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std
+Method,,,,,,,,,,,,,,
+PPO DDA,0.0855,0.0103,0.0688,0.0024,0.0576,0.0022,207.3371,9.1353,0.7374,0.0142,0.4024,0.0365,0.0268,0.0213
+Rule-Based DDA,0.134,0.0176,0.014,0.0005,0.0123,0.0008,169.7896,15.2826,0.6857,0.0121,0.4452,0.0433,0.0281,0.0237
+Static Easy,0.2303,0.0222,0.0055,0.0,0.0012,0.0,104.8669,17.0669,0.9122,0.0272,0.206,0.0,0.0048,0.0064
+Static Hard,0.5183,0.0611,0.0055,0.0,0.0012,0.0,-283.8857,91.1188,0.1864,0.0624,0.794,0.0,0.2835,0.0451
+Static Medium,0.2045,0.0545,0.0,0.0,0.0,0.0,106.6023,50.6272,0.5964,0.0726,0.5,0.0,0.0508,0.0196

@@ -1,0 +1,6 @@
+Player Profile,initial_skill,learning_rate,fatigue_rate,noise_std
+Unseen Low Skill,0.15,0.0,0.0,0.05
+Unseen High Skill,0.9,0.0,0.0,0.05
+Unseen Fast Learning,0.2,0.006,0.0,0.05
+Unseen Strong Fatigue,0.9,0.0,0.005,0.05
+Unseen High Noise,0.3,0.0,0.0,0.2
