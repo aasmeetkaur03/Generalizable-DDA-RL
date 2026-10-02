@@ -1,0 +1,5 @@
+Experiment,Purpose,Evaluation Runs,Primary Metric
+Standard Evaluation,Compare PPO against static and rule-based DDA,40,Win Rate Error
+Unseen-Profile Generalization,Evaluate performance on held-out player configurations,50,Win Rate Error
+Uncertainty Ablation,Measure the contribution of uncertainty information,50,Win Rate Error
+Behavioural Noise Robustness,Test performance across increasing behavioural noise,50,Win Rate Error

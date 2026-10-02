@@ -1,0 +1,5 @@
+Comparison,Test,Statistic,P-value,Significant (p < 0.05)
+PPO DDA vs Static Easy,Paired t-test,-30.289129,0.0,True
+PPO DDA vs Static Medium,Paired t-test,-23.858106,0.0,True
+PPO DDA vs Static Hard,Paired t-test,-67.965106,0.0,True
+PPO DDA vs Rule-Based DDA,Paired t-test,-13.33108,0.0,True

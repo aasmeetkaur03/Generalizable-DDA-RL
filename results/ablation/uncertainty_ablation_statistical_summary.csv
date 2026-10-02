@@ -1,0 +1,8 @@
+Statistic,Value
+Matched evaluation runs,50.0
+Mean error increase,0.11493301587301592
+95% CI lower,0.09404884239479025
+95% CI upper,0.1358171893512416
+t-statistic,-13.32950707384865
+p-value,3.1312924342469084e-07
+Paired Cohen's d,4.215160244068796

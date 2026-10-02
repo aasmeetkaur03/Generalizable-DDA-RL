@@ -1,0 +1,6 @@
+Method,Mean_Win_Rate_Error,Std_Win_Rate_Error,Mean_Total_Reward,Mean_Difficulty_Change_Std
+PPO DDA,0.0855,0.0103,207.3371,0.0688
+Rule-Based DDA,0.134,0.0176,169.7896,0.014
+Static Medium,0.2045,0.0545,106.6023,0.0
+Static Easy,0.2303,0.0222,104.8669,0.0055
+Static Hard,0.5183,0.0611,-283.8857,0.0055

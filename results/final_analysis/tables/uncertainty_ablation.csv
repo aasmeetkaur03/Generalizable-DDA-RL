@@ -1,0 +1,3 @@
+Model,Mean Win Rate Error
+Full PPO,0.080002
+PPO Without Uncertainty,0.194935

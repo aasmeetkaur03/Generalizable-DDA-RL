@@ -1,0 +1,5 @@
+Experiment,PPO / Full Model Result,Comparison / Reference,Primary Finding
+Standard Evaluation,0.085484,Rule-Based DDA: 0.133969,Lower target-tracking error than all evaluated baselines
+Generalization,0.080002,Rule-Based DDA: 0.170797,Lower overall error across held-out profiles
+Uncertainty Ablation,0.080002,Without uncertainty: 0.194935,Uncertainty information materially improves target tracking
+Behavioural Noise Robustness,0.0107,Noise 0.05: 0.0256,Low error maintained across tested noise levels
