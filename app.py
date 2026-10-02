@@ -1,657 +1,929 @@
+# ============================================================
+# GADDA
+# Generalizable & Uncertainty-Aware Dynamic Difficulty Adjustment
+# Interactive Research Demonstration
+# ============================================================
+
 import os
 import sys
+import inspect
+import importlib
+from textwrap import dedent
+
 import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-import plotly.express as px
 
+
+# ============================================================
 # PAGE CONFIG
+# ============================================================
 
 st.set_page_config(
-    page_title="GADDA • Adaptive Difficulty",
-    page_icon="🎮",
+    page_title="GADDA | Adaptive Difficulty",
+    page_icon="◈",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# CUSTOM CSS
+
+# ============================================================
+# THEME
+# ============================================================
 
 st.markdown(
-    """
-    <style>
+    dedent(
+        """
+        <style>
 
-    /* ---------- GLOBAL ---------- */
+        /* ==================================================
+           BASE
+           ================================================== */
 
-    .stApp {
-        background:
-            radial-gradient(
-                circle at 15% 10%,
-                rgba(89, 52, 255, 0.18),
-                transparent 28%
-            ),
-            radial-gradient(
-                circle at 85% 20%,
-                rgba(0, 220, 255, 0.12),
-                transparent 30%
-            ),
-            radial-gradient(
-                circle at 50% 100%,
-                rgba(255, 0, 153, 0.10),
-                transparent 35%
-            ),
-            #070914;
-        color: #F5F7FF;
-    }
+        .stApp {
+            background:
+                radial-gradient(
+                    circle at 10% 0%,
+                    rgba(166, 180, 255, 0.12),
+                    transparent 30%
+                ),
+                radial-gradient(
+                    circle at 95% 20%,
+                    rgba(180, 225, 216, 0.10),
+                    transparent 28%
+                ),
+                #0B0F19;
 
-    /* ---------- MAIN CONTENT ---------- */
+            color: #F5F7FA;
+        }
 
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 3rem;
-        max-width: 1500px;
-    }
+        .block-container {
+            max-width: 1480px;
+            padding-top: 2rem;
+            padding-bottom: 4rem;
+        }
 
-    /* ---------- TYPOGRAPHY ---------- */
+        html, body, [class*="css"] {
+            font-family:
+                Inter,
+                "Segoe UI",
+                Helvetica,
+                Arial,
+                sans-serif;
+        }
 
-    html, body, [class*="css"] {
-        font-family:
-            "Inter",
-            "Segoe UI",
-            "Helvetica Neue",
-            Arial,
-            sans-serif;
-    }
+        /* ==================================================
+           SIDEBAR
+           ================================================== */
 
-    h1, h2, h3 {
-        font-family:
-            "Inter",
-            "Segoe UI",
-            sans-serif;
-        letter-spacing: -0.03em;
-    }
+        section[data-testid="stSidebar"] {
+            background:
+                linear-gradient(
+                    180deg,
+                    #0D1220 0%,
+                    #090D17 100%
+                );
 
-    /* ---------- HERO ---------- */
+            border-right:
+                1px solid rgba(255,255,255,0.07);
+        }
 
-    .hero {
-        padding: 2.2rem 2.4rem;
-        border-radius: 28px;
-        margin-bottom: 1.5rem;
+        /* ==================================================
+           HERO
+           ================================================== */
 
-        background:
-            linear-gradient(
-                135deg,
-                rgba(91, 57, 255, 0.25),
-                rgba(0, 212, 255, 0.12),
-                rgba(255, 0, 153, 0.10)
-            );
+        .hero {
+            padding: 2.6rem 2.8rem;
+            border-radius: 26px;
+            margin-bottom: 1.6rem;
 
-        border: 1px solid rgba(255,255,255,0.12);
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(154, 165, 255, 0.12),
+                    rgba(178, 222, 213, 0.07)
+                );
 
-        box-shadow:
-            0 0 50px rgba(84, 61, 255, 0.12),
-            inset 0 0 30px rgba(255,255,255,0.025);
-    }
+            border:
+                1px solid rgba(255,255,255,0.10);
 
-    .hero-title {
-        font-size: 3.3rem;
-        font-weight: 800;
+            box-shadow:
+                0 24px 70px rgba(0,0,0,0.24);
+        }
 
-        background:
-            linear-gradient(
-                90deg,
-                #7C5CFF,
-                #00D9FF,
-                #FF4FD8
-            );
+        .hero-kicker {
+            color: #AAB5FF;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+        }
 
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        .hero-title {
+            color: #F8FAFC;
+            font-size: 3.5rem;
+            line-height: 1.0;
+            font-weight: 800;
+            letter-spacing: -0.055em;
+            margin-bottom: 0.75rem;
+        }
 
-        margin-bottom: 0.2rem;
-    }
+        .hero-subtitle {
+            color: #C9D0DC;
+            font-size: 1.05rem;
+            line-height: 1.65;
+            max-width: 920px;
+        }
 
-    .hero-subtitle {
-        color: #C8D0E8;
-        font-size: 1.08rem;
-        line-height: 1.6;
-        max-width: 950px;
-    }
+        .hero-tags {
+            margin-top: 1.2rem;
+        }
 
-    .badge {
-        display: inline-block;
-        padding: 0.35rem 0.8rem;
-        border-radius: 999px;
+        .tag {
+            display: inline-block;
 
-        background: rgba(0, 217, 255, 0.10);
-        border: 1px solid rgba(0, 217, 255, 0.30);
+            padding:
+                0.38rem 0.72rem;
 
-        color: #69E7FF;
-        font-size: 0.78rem;
-        font-weight: 700;
+            margin:
+                0.18rem 0.25rem 0.18rem 0;
 
-        margin-right: 0.4rem;
-        margin-top: 0.7rem;
-    }
+            border-radius: 999px;
 
-    /* ---------- SECTION TITLES ---------- */
+            color: #DDE3EE;
 
-    .section-title {
-        font-size: 1.35rem;
-        font-weight: 750;
-        color: #F4F7FF;
-        margin-top: 1.5rem;
-        margin-bottom: 0.6rem;
-    }
+            background:
+                rgba(255,255,255,0.045);
 
-    .section-caption {
-        color: #8994B3;
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
-    }
+            border:
+                1px solid rgba(255,255,255,0.10);
 
-    /* ---------- METRIC CARDS ---------- */
+            font-size: 0.76rem;
+            font-weight: 600;
+        }
 
-    .metric-card {
-        padding: 1.2rem 1.25rem;
-        border-radius: 20px;
+        /* ==================================================
+           SECTION HEADINGS
+           ================================================== */
 
-        background:
-            linear-gradient(
-                145deg,
-                rgba(255,255,255,0.065),
-                rgba(255,255,255,0.025)
-            );
+        .section-title {
+            color: #F5F7FA;
+            font-size: 1.35rem;
+            font-weight: 750;
+            letter-spacing: -0.025em;
+            margin-top: 1.8rem;
+            margin-bottom: 0.25rem;
+        }
 
-        border: 1px solid rgba(255,255,255,0.10);
+        .section-subtitle {
+            color: #8993A5;
+            font-size: 0.88rem;
+            margin-bottom: 1rem;
+        }
 
-        box-shadow:
-            0 10px 35px rgba(0,0,0,0.20);
+        /* ==================================================
+           CARDS
+           ================================================== */
 
-        min-height: 125px;
-    }
+        .glass-card {
+            padding: 1.25rem 1.35rem;
+            border-radius: 20px;
 
-    .metric-label {
-        color: #8F9BB8;
-        font-size: 0.82rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-weight: 650;
-    }
+            background:
+                rgba(255,255,255,0.035);
 
-    .metric-value {
-        font-size: 2rem;
-        font-weight: 800;
-        margin-top: 0.25rem;
+            border:
+                1px solid rgba(255,255,255,0.075);
 
-        background:
-            linear-gradient(
-                90deg,
-                #FFFFFF,
-                #9DEBFF
-            );
+            box-shadow:
+                0 14px 40px rgba(0,0,0,0.18);
+        }
 
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
+        .metric-card {
+            padding: 1.15rem 1.2rem;
+            min-height: 120px;
 
-    .metric-description {
-        color: #78839F;
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
-    }
+            border-radius: 18px;
 
-    /* ---------- INFO CARDS ---------- */
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(255,255,255,0.055),
+                    rgba(255,255,255,0.018)
+                );
 
-    .info-card {
-        padding: 1.15rem 1.3rem;
-        border-radius: 18px;
+            border:
+                1px solid rgba(255,255,255,0.075);
+        }
 
-        background: rgba(255,255,255,0.035);
-        border: 1px solid rgba(255,255,255,0.08);
+        .metric-label {
+            color: #8993A5;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+        }
 
-        color: #C8D0E8;
-        line-height: 1.55;
-    }
+        .metric-value {
+            color: #F5F7FA;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            margin-top: 0.25rem;
+        }
 
-    /* ---------- FOOTER ---------- */
+        .metric-note {
+            color: #6F7A8D;
+            font-size: 0.72rem;
+            margin-top: 0.15rem;
+        }
 
-    .footer {
-        margin-top: 3rem;
-        padding: 1.5rem;
+        /* ==================================================
+           STATUS
+           ================================================== */
 
-        text-align: center;
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
 
-        color: #68738E;
-        font-size: 0.82rem;
+            color: #DCE5E2;
+            font-size: 0.82rem;
+        }
 
-        border-top:
-            1px solid rgba(255,255,255,0.08);
-    }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #A9D8CB;
+            box-shadow:
+                0 0 12px rgba(169,216,203,0.45);
+        }
 
-    /* ---------- SIDEBAR ---------- */
+        /* ==================================================
+           BUTTON
+           ================================================== */
 
-    section[data-testid="stSidebar"] {
-        background:
-            linear-gradient(
-                180deg,
-                #090C19,
-                #070914
-            );
+        .stButton > button {
+            width: 100%;
 
-        border-right:
-            1px solid rgba(255,255,255,0.08);
-    }
+            border-radius: 12px;
 
-    /* ---------- BUTTON ---------- */
+            background:
+                #DCE4FF;
 
-    .stButton > button {
-        border-radius: 12px;
-        border: 1px solid rgba(0,217,255,0.35);
+            color:
+                #111827;
 
-        background:
-            linear-gradient(
-                135deg,
-                rgba(124,92,255,0.28),
-                rgba(0,217,255,0.16)
-            );
+            border:
+                none;
 
-        color: white;
-        font-weight: 700;
+            font-weight: 750;
 
-        transition: all 0.2s ease;
-    }
+            padding:
+                0.65rem 1rem;
 
-    .stButton > button:hover {
-        border-color: #00D9FF;
+            transition:
+                all 0.18s ease;
+        }
 
-        box-shadow:
-            0 0 25px rgba(0,217,255,0.20);
+        .stButton > button:hover {
+            background:
+                #EEF1FF;
 
-        transform: translateY(-1px);
-    }
+            transform:
+                translateY(-1px);
 
-    /* ---------- DATAFRAME ---------- */
+            box-shadow:
+                0 10px 30px rgba(220,228,255,0.16);
+        }
 
-    [data-testid="stDataFrame"] {
-        border-radius: 16px;
-        overflow: hidden;
-    }
+        /* ==================================================
+           FOOTER
+           ================================================== */
 
-    </style>
-    """,
+        .footer {
+            margin-top: 3.5rem;
+            padding-top: 1.4rem;
+
+            border-top:
+                1px solid rgba(255,255,255,0.07);
+
+            color: #657084;
+            text-align: center;
+            font-size: 0.76rem;
+            line-height: 1.7;
+        }
+
+        </style>
+        """
+    ),
     unsafe_allow_html=True,
 )
 
-# PROJECT PATH
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+# ============================================================
+# PROJECT PATHS
+# ============================================================
+
+ROOT = os.path.dirname(
+    os.path.abspath(__file__)
+)
 
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-MODEL_PATH = os.path.join(ROOT, "models", "ppo_dda.zip")
+MODEL_PATH = os.path.join(
+    ROOT,
+    "models",
+    "ppo_dda.zip",
+)
 
 
-# TRY PROJECT IMPORTS
-
-GADDA_AVAILABLE = False
-BASELINE_AVAILABLE = False
-PPO_AVAILABLE = False
-
-try:
-    from src.dda_env import GADDAEnv
-    GADDA_AVAILABLE = True
-except Exception:
-    GADDA_AVAILABLE = False
-
-try:
-    from src.baselines import StaticPolicy, RuleBasedDDA
-    BASELINE_AVAILABLE = True
-except Exception:
-    BASELINE_AVAILABLE = False
+# ============================================================
+# OPTIONAL DEPENDENCIES
+# ============================================================
 
 try:
     from stable_baselines3 import PPO
-    PPO_AVAILABLE = True
+
+    SB3_AVAILABLE = True
+
 except Exception:
-    PPO_AVAILABLE = False
+    PPO = None
+    SB3_AVAILABLE = False
 
 
-# LOAD PPO
+try:
+    import gymnasium as gym
+
+    GYM_AVAILABLE = True
+
+except Exception:
+    gym = None
+    GYM_AVAILABLE = False
+
+
+# ============================================================
+# LOAD PPO MODEL
+# ============================================================
 
 @st.cache_resource
-def load_model():
+def load_ppo_model():
 
-    if not PPO_AVAILABLE:
+    if not SB3_AVAILABLE:
         return None
 
-    if not os.path.exists(MODEL_PATH):
+    if not os.path.exists(
+        MODEL_PATH
+    ):
         return None
 
     try:
-        model = PPO.load(
+
+        return PPO.load(
             MODEL_PATH,
-            device="cpu"
+            device="cpu",
         )
-        return model
+
     except Exception:
+
         return None
 
 
-model = load_model()
+ppo_model = load_ppo_model()
 
 
-# FALLBACK PLAYER SIMULATION
+# ============================================================
+# DISCOVER ENVIRONMENT CLASS
+# ============================================================
 
-class DemoPlayer:
+@st.cache_resource
+def load_environment_class():
 
-    def __init__(
-        self,
-        initial_skill=0.50,
-        learning_rate=0.0,
-        fatigue_rate=0.0,
-        noise_std=0.05,
-        seed=42,
+    try:
+
+        module = importlib.import_module(
+            "src.environment"
+        )
+
+    except Exception:
+        return None
+
+    candidates = []
+
+    for name in dir(module):
+
+        obj = getattr(
+            module,
+            name,
+        )
+
+        if not inspect.isclass(obj):
+            continue
+
+        try:
+
+            if (
+                GYM_AVAILABLE
+                and issubclass(
+                    obj,
+                    gym.Env,
+                )
+            ):
+                candidates.append(obj)
+
+        except Exception:
+            continue
+
+    # Prefer names containing GADDA.
+    for cls in candidates:
+
+        if "gadda" in cls.__name__.lower():
+
+            return cls
+
+    # Otherwise prefer environment-like class names.
+    for cls in candidates:
+
+        name = cls.__name__.lower()
+
+        if (
+            "environment" in name
+            or "difficulty" in name
+            or "dda" in name
+        ):
+
+            return cls
+
+    if candidates:
+        return candidates[0]
+
+    return None
+
+
+ENV_CLASS = load_environment_class()
+
+
+# ============================================================
+# REAL ENVIRONMENT CONSTRUCTOR
+# ============================================================
+
+def build_real_environment(
+    initial_skill,
+    learning_rate,
+    fatigue_rate,
+    noise_std,
+    seed,
+    max_steps,
+):
+
+    if ENV_CLASS is None:
+        return None
+
+    try:
+
+        signature = inspect.signature(
+            ENV_CLASS.__init__
+        )
+
+        parameters = signature.parameters
+
+        kwargs = {}
+
+        if (
+            "target_win_rate"
+            in parameters
+        ):
+            kwargs[
+                "target_win_rate"
+            ] = 0.70
+
+        if (
+            "max_steps"
+            in parameters
+        ):
+            kwargs[
+                "max_steps"
+            ] = int(max_steps)
+
+        if (
+            "seed"
+            in parameters
+        ):
+            kwargs[
+                "seed"
+            ] = int(seed)
+
+        player_config = {
+            "initial_skill":
+                float(initial_skill),
+
+            "learning_rate":
+                float(learning_rate),
+
+            "fatigue_rate":
+                float(fatigue_rate),
+
+            "noise_std":
+                float(noise_std),
+        }
+
+        if (
+            "player_config"
+            in parameters
+        ):
+            kwargs[
+                "player_config"
+            ] = player_config
+
+        env = ENV_CLASS(
+            **kwargs
+        )
+
+        return env
+
+    except Exception:
+
+        return None
+
+
+# ============================================================
+# REAL PPO RUNNER
+# ============================================================
+
+def run_real_model(
+    initial_skill,
+    learning_rate,
+    fatigue_rate,
+    noise_std,
+    seed,
+    max_steps,
+):
+
+    env = build_real_environment(
+        initial_skill,
+        learning_rate,
+        fatigue_rate,
+        noise_std,
+        seed,
+        max_steps,
+    )
+
+    if (
+        env is None
+        or ppo_model is None
+    ):
+        return None
+
+    try:
+
+        obs, info = env.reset(
+            seed=int(seed)
+        )
+
+        records = []
+
+        total_reward = 0.0
+
+        previous_difficulty = 0.50
+
+        for step in range(
+            int(max_steps)
+        ):
+
+            action, _ = (
+                ppo_model.predict(
+                    obs,
+                    deterministic=True,
+                )
+            )
+
+            obs, reward, terminated, truncated, info = (
+                env.step(action)
+            )
+
+            total_reward += float(
+                reward
+            )
+
+            # -------------------------
+            # Robust information lookup
+            # -------------------------
+
+            difficulty = info.get(
+                "difficulty",
+                float(
+                    np.asarray(
+                        action
+                    ).reshape(-1)[0]
+                ),
+            )
+
+            true_skill = info.get(
+                "true_skill",
+                np.nan,
+            )
+
+            estimated_skill = info.get(
+                "estimated_skill",
+                float(
+                    obs[0]
+                )
+                if len(obs) > 0
+                else np.nan,
+            )
+
+            uncertainty = info.get(
+                "uncertainty",
+                float(
+                    obs[1]
+                )
+                if len(obs) > 1
+                else np.nan,
+            )
+
+            win_rate = info.get(
+                "recent_win_rate",
+                float(
+                    obs[2]
+                )
+                if len(obs) > 2
+                else np.nan,
+            )
+
+            error_rate = info.get(
+                "error_rate",
+                float(
+                    obs[3]
+                )
+                if len(obs) > 3
+                else np.nan,
+            )
+
+            success = info.get(
+                "success",
+                np.nan,
+            )
+
+            records.append(
+                {
+                    "Step":
+                        step + 1,
+
+                    "Difficulty":
+                        float(
+                            difficulty
+                        ),
+
+                    "True Skill":
+                        float(
+                            true_skill
+                        )
+                        if not pd.isna(
+                            true_skill
+                        )
+                        else np.nan,
+
+                    "Estimated Skill":
+                        float(
+                            estimated_skill
+                        ),
+
+                    "Uncertainty":
+                        float(
+                            uncertainty
+                        ),
+
+                    "Win Rate":
+                        float(
+                            win_rate
+                        ),
+
+                    "Error Rate":
+                        float(
+                            error_rate
+                        ),
+
+                    "Reward":
+                        float(
+                            reward
+                        ),
+
+                    "Success":
+                        float(
+                            success
+                        )
+                        if not pd.isna(
+                            success
+                        )
+                        else np.nan,
+
+                    "Difficulty Change":
+                        abs(
+                            float(
+                                difficulty
+                            )
+                            - previous_difficulty
+                        ),
+                }
+            )
+
+            previous_difficulty = float(
+                difficulty
+            )
+
+            if (
+                terminated
+                or truncated
+            ):
+                break
+
+        return (
+            pd.DataFrame(
+                records
+            ),
+            total_reward,
+            True,
+        )
+
+    except Exception:
+
+        return None
+
+
+# ============================================================
+# VISUAL FALLBACK
+#
+# IMPORTANT:
+# This is only used if the local GADDA environment/model
+# cannot be loaded. It is clearly labelled in the UI.
+# ============================================================
+
+def run_visual_demo(
+    initial_skill,
+    learning_rate,
+    fatigue_rate,
+    noise_std,
+    seed,
+    max_steps,
+):
+
+    rng = np.random.default_rng(
+        int(seed)
+    )
+
+    target = 0.70
+
+    true_skill = float(
+        initial_skill
+    )
+
+    difficulty = 0.50
+
+    estimated_skill = true_skill
+
+    uncertainty = 0.28
+
+    history = []
+
+    rows = []
+
+    for step in range(
+        int(max_steps)
     ):
 
-        self.initial_skill = initial_skill
-        self.learning_rate = learning_rate
-        self.fatigue_rate = fatigue_rate
-        self.noise_std = noise_std
+        # -------------------------
+        # Simulated skill dynamics
+        # -------------------------
 
-        self.rng = np.random.default_rng(seed)
-
-        self.reset()
-
-    def reset(self):
-
-        self.true_skill = float(
-            self.initial_skill
+        true_skill = np.clip(
+            true_skill
+            + learning_rate
+            - fatigue_rate
+            + rng.normal(
+                0,
+                noise_std * 0.04,
+            ),
+            0.03,
+            0.97,
         )
 
-        self.step_count = 0
+        # -------------------------
+        # Success probability
+        # -------------------------
 
-    def play(self, difficulty):
-
-        self.step_count += 1
-
-        self.true_skill = np.clip(
-            self.initial_skill
-            + self.learning_rate * self.step_count
-            - self.fatigue_rate * self.step_count,
-            0.05,
-            0.95,
-        )
-
-        noise = self.rng.normal(
-            0,
-            self.noise_std
-        )
-
-        effective_skill = np.clip(
-            self.true_skill + noise,
-            0.01,
-            0.99,
-        )
-
-        probability = 1.0 / (
+        probability = (
             1.0
-            + np.exp(
-                8.0
-                * (difficulty - effective_skill)
+            /
+            (
+                1.0
+                +
+                np.exp(
+                    8.0
+                    *
+                    (
+                        difficulty
+                        - true_skill
+                    )
+                )
             )
         )
 
         success = int(
-            self.rng.random()
+            rng.random()
             < probability
         )
 
-        error_rate = np.clip(
-            difficulty
-            - effective_skill
-            + abs(noise),
-            0,
-            1,
+        history.append(
+            success
         )
 
-        completion_time = max(
-            0.1,
-            1.0
-            + difficulty
-            - effective_skill
-            + abs(noise),
+        recent_win = np.mean(
+            history[-10:]
         )
 
-        return {
-            "success": success,
-            "true_skill": float(
-                self.true_skill
-            ),
-            "error_rate": float(
-                error_rate
-            ),
-            "completion_time": float(
-                completion_time
-            ),
-        }
+        # -------------------------
+        # Estimate skill
+        # -------------------------
 
-
-# RUN REAL GADDA
-
-def run_real_gadda(
-    initial_skill,
-    learning_rate,
-    fatigue_rate,
-    noise_std,
-    seed,
-    max_steps,
-):
-
-    player_config = {
-        "initial_skill": initial_skill,
-        "learning_rate": learning_rate,
-        "fatigue_rate": fatigue_rate,
-        "noise_std": noise_std,
-    }
-
-    env = GADDAEnv(
-        max_steps=max_steps,
-        target_win_rate=0.70,
-        player_config=player_config,
-        seed=seed,
-    )
-
-    obs, _ = env.reset(
-        seed=seed
-    )
-
-    rows = []
-
-    total_reward = 0.0
-
-    for step in range(max_steps):
-
-        action, _ = model.predict(
-            obs,
-            deterministic=True,
+        estimated_skill = (
+            0.88
+            * estimated_skill
+            +
+            0.12
+            * recent_win
         )
 
-        obs, reward, terminated, truncated, info = env.step(
-            action
-        )
+        # -------------------------
+        # Uncertainty
+        # -------------------------
 
-        total_reward += float(reward)
-
-        rows.append(
-            {
-                "Step": step + 1,
-                "Difficulty": float(
-                    info.get(
-                        "difficulty",
-                        action[0]
-                        if np.ndim(action)
-                        else action,
-                    )
-                ),
-                "True Skill": float(
-                    info.get(
-                        "true_skill",
-                        obs[0],
-                    )
-                ),
-                "Estimated Skill": float(
-                    info.get(
-                        "estimated_skill",
-                        obs[0],
-                    )
-                ),
-                "Uncertainty": float(
-                    info.get(
-                        "uncertainty",
-                        obs[1],
-                    )
-                ),
-                "Win Rate": float(
-                    info.get(
-                        "recent_win_rate",
-                        obs[2],
-                    )
-                ),
-                "Error Rate": float(
-                    info.get(
-                        "error_rate",
-                        obs[3],
-                    )
-                ),
-                "Reward": float(
-                    reward
-                ),
-                "Success": int(
-                    info.get(
-                        "success",
-                        0,
-                    )
-                ),
-            }
-        )
-
-        if terminated or truncated:
-            break
-
-    return pd.DataFrame(rows), total_reward
-
-
-# FALLBACK GADDA
-
-def run_demo_gadda(
-    initial_skill,
-    learning_rate,
-    fatigue_rate,
-    noise_std,
-    seed,
-    max_steps,
-):
-
-    player = DemoPlayer(
-        initial_skill=initial_skill,
-        learning_rate=learning_rate,
-        fatigue_rate=fatigue_rate,
-        noise_std=noise_std,
-        seed=seed,
-    )
-
-    rng = np.random.default_rng(seed)
-
-    difficulty = 0.50
-    target = 0.70
-
-    history = []
-
-    estimated_skill = initial_skill
-    uncertainty = 0.25
-
-    for step in range(max_steps):
-
-        # Simulated recent performance
-        recent_win = (
-            np.mean(
-                [
-                    x["success"]
-                    for x in history[-10:]
-                ]
+        uncertainty = np.clip(
+            0.28
+            * np.exp(
+                -step / 65
             )
-            if history
-            else 0.50
+            +
+            abs(
+                true_skill
+                - estimated_skill
+            )
+            * 0.35
+            +
+            noise_std
+            * 0.20,
+            0.025,
+            0.60,
         )
 
-        # Simple uncertainty-aware control
-        skill_error = target - recent_win
+        # -------------------------
+        # Adaptive controller
+        # -------------------------
 
-        adaptation_strength = (
-            0.18
-            * (1.0 - uncertainty)
+        direction = (
+            recent_win
+            - target
         )
 
-        difficulty += (
-            adaptation_strength
-            * skill_error
+        adaptation = (
+            0.045
+            * direction
+            *
+            (
+                1.0
+                - uncertainty
+            )
         )
+
+        difficulty += adaptation
 
         difficulty += rng.normal(
             0,
-            0.012,
+            0.008,
         )
 
         difficulty = float(
             np.clip(
                 difficulty,
-                0.0,
-                1.0,
+                0.02,
+                0.98,
             )
         )
 
-        result = player.play(
+        error_rate = np.clip(
             difficulty
-        )
-
-        history.append(
-            result
-        )
-
-        recent_win = np.mean(
-            [
-                x["success"]
-                for x in history[-10:]
-            ]
-        )
-
-        # Exponential skill estimate
-        estimated_skill = (
-            0.88 * estimated_skill
-            + 0.12 * (
-                0.5 * recent_win
-                + 0.5 * result["true_skill"]
-            )
-        )
-
-        # Uncertainty falls with evidence
-        uncertainty = max(
-            0.03,
-            0.30
-            * np.exp(
-                -step / 55
-            )
-            + 0.05
-            * min(
-                1.0,
-                abs(
-                    result["true_skill"]
-                    - estimated_skill
+            - true_skill
+            + abs(
+                rng.normal(
+                    0,
+                    noise_std * 0.20,
                 )
-                * 2,
             ),
+            0,
+            1,
         )
 
         reward = (
@@ -663,85 +935,72 @@ def run_demo_gadda(
             - 0.10
             * (
                 abs(
-                    difficulty
-                    - (
-                        history[-2].get(
-                            "difficulty",
-                            difficulty,
-                        )
-                        if len(history) > 1
-                        else difficulty
-                    )
+                    adaptation
                 )
             )
+            + 0.20
+            * (
+                1
+                - error_rate
+            )
+            - 0.10
+            * uncertainty
         )
-
-        history[-1]["difficulty"] = difficulty
-
-        history[-1][
-            "estimated_skill"
-        ] = estimated_skill
-
-        history[-1][
-            "uncertainty"
-        ] = uncertainty
-
-        history[-1][
-            "recent_win_rate"
-        ] = recent_win
-
-        history[-1][
-            "reward"
-        ] = reward
-
-    rows = []
-
-    for i, item in enumerate(history):
 
         rows.append(
             {
-                "Step": i + 1,
-                "Difficulty": item[
-                    "difficulty"
-                ],
-                "True Skill": item[
-                    "true_skill"
-                ],
-                "Estimated Skill": item[
-                    "estimated_skill"
-                ],
-                "Uncertainty": item[
-                    "uncertainty"
-                ],
-                "Win Rate": item[
-                    "recent_win_rate"
-                ],
-                "Error Rate": item[
-                    "error_rate"
-                ],
-                "Reward": item[
-                    "reward"
-                ],
-                "Success": item[
-                    "success"
-                ],
+                "Step":
+                    step + 1,
+
+                "Difficulty":
+                    difficulty,
+
+                "True Skill":
+                    true_skill,
+
+                "Estimated Skill":
+                    estimated_skill,
+
+                "Uncertainty":
+                    uncertainty,
+
+                "Win Rate":
+                    recent_win,
+
+                "Error Rate":
+                    error_rate,
+
+                "Reward":
+                    reward,
+
+                "Success":
+                    success,
+
+                "Difficulty Change":
+                    abs(
+                        adaptation
+                    ),
             }
         )
 
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(
+        rows
+    )
 
     return (
         df,
         float(
             df["Reward"].sum()
         ),
+        False,
     )
 
 
-# STATIC POLICY
+# ============================================================
+# RUN SIMULATION
+# ============================================================
 
-def run_static(
-    difficulty,
+def run_gadda(
     initial_skill,
     learning_rate,
     fatigue_rate,
@@ -750,274 +1009,19 @@ def run_static(
     max_steps,
 ):
 
-    player = DemoPlayer(
-        initial_skill=initial_skill,
-        learning_rate=learning_rate,
-        fatigue_rate=fatigue_rate,
-        noise_std=noise_std,
-        seed=seed,
+    result = run_real_model(
+        initial_skill,
+        learning_rate,
+        fatigue_rate,
+        noise_std,
+        seed,
+        max_steps,
     )
 
-    rows = []
+    if result is not None:
+        return result
 
-    history = []
-
-    for step in range(max_steps):
-
-        result = player.play(
-            difficulty
-        )
-
-        history.append(
-            result["success"]
-        )
-
-        recent_win = np.mean(
-            history[-10:]
-        )
-
-        estimated_skill = (
-            initial_skill
-        )
-
-        uncertainty = max(
-            0.04,
-            0.30
-            * np.exp(
-                -step / 60
-            ),
-        )
-
-        reward = (
-            1
-            - abs(
-                recent_win
-                - 0.70
-            )
-        )
-
-        rows.append(
-            {
-                "Step": step + 1,
-                "Difficulty": difficulty,
-                "True Skill": result[
-                    "true_skill"
-                ],
-                "Estimated Skill": estimated_skill,
-                "Uncertainty": uncertainty,
-                "Win Rate": recent_win,
-                "Error Rate": result[
-                    "error_rate"
-                ],
-                "Reward": reward,
-                "Success": result[
-                    "success"
-                ],
-            }
-        )
-
-    df = pd.DataFrame(rows)
-
-    return (
-        df,
-        float(
-            df["Reward"].sum()
-        ),
-    )
-
-
-# RULE-BASED POLICY
-
-def run_rule_based(
-    initial_skill,
-    learning_rate,
-    fatigue_rate,
-    noise_std,
-    seed,
-    max_steps,
-):
-
-    player = DemoPlayer(
-        initial_skill=initial_skill,
-        learning_rate=learning_rate,
-        fatigue_rate=fatigue_rate,
-        noise_std=noise_std,
-        seed=seed,
-    )
-
-    difficulty = 0.50
-
-    history = []
-
-    rows = []
-
-    for step in range(max_steps):
-
-        result = player.play(
-            difficulty
-        )
-
-        history.append(
-            result["success"]
-        )
-
-        recent_win = np.mean(
-            history[-10:]
-        )
-
-        if recent_win > 0.75:
-            difficulty += 0.025
-
-        elif recent_win < 0.60:
-            difficulty -= 0.025
-
-        difficulty = float(
-            np.clip(
-                difficulty,
-                0.0,
-                1.0,
-            )
-        )
-
-        uncertainty = max(
-            0.05,
-            0.28
-            * np.exp(
-                -step / 60
-            ),
-        )
-
-        estimated_skill = (
-            initial_skill
-            + learning_rate * step
-            - fatigue_rate * step
-        )
-
-        estimated_skill = float(
-            np.clip(
-                estimated_skill,
-                0.05,
-                0.95,
-            )
-        )
-
-        reward = (
-            1
-            - abs(
-                recent_win
-                - 0.70
-            )
-        )
-
-        rows.append(
-            {
-                "Step": step + 1,
-                "Difficulty": difficulty,
-                "True Skill": result[
-                    "true_skill"
-                ],
-                "Estimated Skill": estimated_skill,
-                "Uncertainty": uncertainty,
-                "Win Rate": recent_win,
-                "Error Rate": result[
-                    "error_rate"
-                ],
-                "Reward": reward,
-                "Success": result[
-                    "success"
-                ],
-            }
-        )
-
-    df = pd.DataFrame(rows)
-
-    return (
-        df,
-        float(
-            df["Reward"].sum()
-        ),
-    )
-
-
-# MAIN SIMULATION ROUTER
-
-def run_simulation(
-    method,
-    initial_skill,
-    learning_rate,
-    fatigue_rate,
-    noise_std,
-    seed,
-    max_steps,
-):
-
-    if (
-        method == "GADDA — PPO"
-        and model is not None
-        and GADDA_AVAILABLE
-    ):
-
-        try:
-            return run_real_gadda(
-                initial_skill,
-                learning_rate,
-                fatigue_rate,
-                noise_std,
-                seed,
-                max_steps,
-            )
-
-        except Exception:
-            pass
-
-    if method == "GADDA — PPO":
-
-        return run_demo_gadda(
-            initial_skill,
-            learning_rate,
-            fatigue_rate,
-            noise_std,
-            seed,
-            max_steps,
-        )
-
-    if method == "Rule-Based DDA":
-
-        return run_rule_based(
-            initial_skill,
-            learning_rate,
-            fatigue_rate,
-            noise_std,
-            seed,
-            max_steps,
-        )
-
-    if method == "Static Easy":
-
-        return run_static(
-            0.30,
-            initial_skill,
-            learning_rate,
-            fatigue_rate,
-            noise_std,
-            seed,
-            max_steps,
-        )
-
-    if method == "Static Medium":
-
-        return run_static(
-            0.50,
-            initial_skill,
-            learning_rate,
-            fatigue_rate,
-            noise_std,
-            seed,
-            max_steps,
-        )
-
-    return run_static(
-        0.70,
+    return run_visual_demo(
         initial_skill,
         learning_rate,
         fatigue_rate,
@@ -1027,373 +1031,406 @@ def run_simulation(
     )
 
 
+# ============================================================
 # HERO
+# ============================================================
 
 st.markdown(
-    """
-    <div class="hero">
+    dedent(
+        """
+        <div class="hero">
 
-        <div class="hero-title">
-            GADDA
+            <div class="hero-kicker">
+                Adaptive AI Research Demonstration
+            </div>
+
+            <div class="hero-title">
+                GADDA
+            </div>
+
+            <div class="hero-subtitle">
+                Generalizable &amp; Uncertainty-Aware Dynamic Difficulty
+                Adjustment using Reinforcement Learning
+            </div>
+
+            <div class="hero-tags">
+
+                <span class="tag">
+                    PPO
+                </span>
+
+                <span class="tag">
+                    Player Modelling
+                </span>
+
+                <span class="tag">
+                    Uncertainty
+                </span>
+
+                <span class="tag">
+                    Adaptive Decision-Making
+                </span>
+
+                <span class="tag">
+                    Generalization
+                </span>
+
+            </div>
+
         </div>
-
-        <div class="hero-subtitle">
-            Generalizable & Uncertainty-Aware Dynamic Difficulty Adjustment
-            using Reinforcement Learning
-        </div>
-
-        <div>
-            <span class="badge">PPO</span>
-            <span class="badge">Adaptive AI</span>
-            <span class="badge">Player Modelling</span>
-            <span class="badge">Uncertainty-Aware</span>
-            <span class="badge">Generalization</span>
-        </div>
-
-    </div>
-    """,
+        """
+    ),
     unsafe_allow_html=True,
 )
 
 
+# ============================================================
 # SIDEBAR
+# ============================================================
 
 with st.sidebar:
 
     st.markdown(
-        "## 🎮 Simulation Lab"
+        "## Simulation Controls"
     )
 
     st.caption(
-        "Explore how GADDA adapts difficulty "
-        "under changing simulated player behaviour"
+        "Explore how the difficulty policy responds "
+        "to changing simulated player behaviour."
     )
 
     st.divider()
 
-    method = st.selectbox(
-        "Control Policy",
-        [
-            "GADDA — PPO",
-            "Rule-Based DDA",
-            "Static Easy",
-            "Static Medium",
-            "Static Hard",
-        ],
-        index=0,
-    )
-
     st.markdown(
-        "### 👤 Player Profile"
+        "### Player state"
     )
 
     initial_skill = st.slider(
-        "Initial Skill",
-        min_value=0.05,
-        max_value=0.95,
-        value=0.50,
-        step=0.01,
+        "Initial skill",
+        0.05,
+        0.95,
+        0.50,
+        0.01,
     )
 
     learning_rate = st.slider(
-        "Learning Rate",
-        min_value=0.0,
-        max_value=0.008,
-        value=0.0,
-        step=0.0005,
+        "Learning rate",
+        0.0000,
+        0.0080,
+        0.0000,
+        0.0005,
         format="%.4f",
     )
 
     fatigue_rate = st.slider(
-        "Fatigue Rate",
-        min_value=0.0,
-        max_value=0.008,
-        value=0.0,
-        step=0.0005,
+        "Fatigue rate",
+        0.0000,
+        0.0080,
+        0.0000,
+        0.0005,
         format="%.4f",
     )
 
     noise_std = st.slider(
-        "Behavioural Noise",
-        min_value=0.01,
-        max_value=0.30,
-        value=0.05,
-        step=0.01,
+        "Behavioural noise",
+        0.01,
+        0.30,
+        0.05,
+        0.01,
         format="%.2f",
     )
 
     st.markdown(
-        "### ⚙️ Simulation"
+        "### Run settings"
     )
 
     max_steps = st.slider(
-        "Episode Length",
-        min_value=50,
-        max_value=300,
-        value=200,
-        step=10,
+        "Episode length",
+        50,
+        300,
+        200,
+        10,
     )
 
     seed = st.number_input(
-        "Random Seed",
-        min_value=0,
-        max_value=9999,
-        value=42,
-        step=1,
+        "Seed",
+        0,
+        9999,
+        42,
+        1,
     )
 
     run_button = st.button(
-        "🚀 Run Adaptation",
+        "Run adaptation",
         use_container_width=True,
     )
 
     st.divider()
 
+    model_state = (
+        "Loaded"
+        if ppo_model is not None
+        else "Not loaded"
+    )
+
+    env_state = (
+        ENV_CLASS.__name__
+        if ENV_CLASS is not None
+        else "Fallback visual mode"
+    )
+
     st.markdown(
-        """
-        <div class="info-card">
+        dedent(
+            f"""
+            <div class="glass-card">
 
-        <b>Research target</b><br>
-        Target win rate: <b>70%</b><br><br>
+                <div class="status">
+                    <span class="status-dot"></span>
+                    Controller status
+                </div>
 
-        The trained PPO model is kept frozen.
-        Interactive controls change the simulated
-        player condition only.
+                <br>
 
-        </div>
-        """,
+                <b>Policy</b><br>
+                PPO · frozen model
+
+                <br><br>
+
+                <b>Model</b><br>
+                {model_state}
+
+                <br><br>
+
+                <b>Environment</b><br>
+                {env_state}
+
+                <br><br>
+
+                <b>Target</b><br>
+                70% success rate
+
+            </div>
+            """
+        ),
         unsafe_allow_html=True,
     )
 
 
-# SESSION STATE
+# ============================================================
+# INITIAL / UPDATED RUN
+# ============================================================
 
 if (
-    "trajectory" not in st.session_state
+    "gadda_df"
+    not in st.session_state
     or run_button
 ):
 
     with st.spinner(
-        "Running adaptive simulation..."
+        "Following the adaptation trajectory..."
     ):
 
-        trajectory, total_reward = run_simulation(
-            method,
-            float(initial_skill),
-            float(learning_rate),
-            float(fatigue_rate),
-            float(noise_std),
-            int(seed),
-            int(max_steps),
+        df, total_reward, using_real_model = (
+            run_gadda(
+                float(initial_skill),
+                float(learning_rate),
+                float(fatigue_rate),
+                float(noise_std),
+                int(seed),
+                int(max_steps),
+            )
         )
 
         st.session_state[
-            "trajectory"
-        ] = trajectory
+            "gadda_df"
+        ] = df
 
         st.session_state[
-            "total_reward"
+            "gadda_reward"
         ] = total_reward
 
         st.session_state[
-            "method"
-        ] = method
+            "using_real_model"
+        ] = using_real_model
 
 
 df = st.session_state[
-    "trajectory"
+    "gadda_df"
 ]
 
 total_reward = st.session_state[
-    "total_reward"
+    "gadda_reward"
 ]
 
-active_method = st.session_state[
-    "method"
+using_real_model = st.session_state[
+    "using_real_model"
 ]
 
 
-# TOP METRICS
+# ============================================================
+# MODE NOTICE
+# ============================================================
 
-mean_win = df[
-    "Win Rate"
-].mean()
+if using_real_model:
 
-final_win = df[
-    "Win Rate"
-].iloc[-1]
-
-win_error = abs(
-    mean_win - 0.70
-)
-
-mean_difficulty = df[
-    "Difficulty"
-].mean()
-
-final_difficulty = df[
-    "Difficulty"
-].iloc[-1]
-
-mean_uncertainty = df[
-    "Uncertainty"
-].mean()
-
-
-c1, c2, c3, c4, c5 = st.columns(5)
-
-with c1:
-
-    st.markdown(
-        f"""
-        <div class="metric-card">
-            <div class="metric-label">
-                Mean Win Rate
-            </div>
-            <div class="metric-value">
-                {mean_win:.3f}
-            </div>
-            <div class="metric-description">
-                Target = 0.700
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.success(
+        "Live research model: the frozen PPO policy is driving this trajectory.",
+        icon="✓",
     )
-
-with c2:
-
-    st.markdown(
-        f"""
-        <div class="metric-card">
-            <div class="metric-label">
-                Target Error
-            </div>
-            <div class="metric-value">
-                {win_error:.3f}
-            </div>
-            <div class="metric-description">
-                Absolute deviation
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with c3:
-
-    st.markdown(
-        f"""
-        <div class="metric-card">
-            <div class="metric-label">
-                Final Win Rate
-            </div>
-            <div class="metric-value">
-                {final_win:.3f}
-            </div>
-            <div class="metric-description">
-                Final rolling value
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with c4:
-
-    st.markdown(
-        f"""
-        <div class="metric-card">
-            <div class="metric-label">
-                Difficulty
-            </div>
-            <div class="metric-value">
-                {final_difficulty:.3f}
-            </div>
-            <div class="metric-description">
-                Current level
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with c5:
-
-    st.markdown(
-        f"""
-        <div class="metric-card">
-            <div class="metric-label">
-                Uncertainty
-            </div>
-            <div class="metric-value">
-                {mean_uncertainty:.3f}
-            </div>
-            <div class="metric-description">
-                Mean estimate uncertainty
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-# ACTIVE MODEL STATUS
-
-st.markdown(
-    '<div class="section-title">🧠 Adaptive Controller</div>',
-    unsafe_allow_html=True,
-)
-
-if (
-    active_method == "GADDA — PPO"
-    and model is not None
-    and GADDA_AVAILABLE
-):
-
-    status = "LIVE TRAINED PPO MODEL"
-
-elif active_method == "GADDA — PPO":
-
-    status = "DEMO FALLBACK SIMULATOR"
 
 else:
 
-    status = active_method.upper()
+    st.info(
+        "Visual demonstration mode: the local PPO/environment pair could not be loaded, so this run is illustrative and is not a publication result.",
+        icon="i",
+    )
+
+
+# ============================================================
+# KEY METRICS
+# ============================================================
+
+mean_win = float(
+    df["Win Rate"].mean()
+)
+
+final_win = float(
+    df["Win Rate"].iloc[-1]
+)
+
+target_error = abs(
+    mean_win - 0.70
+)
+
+final_difficulty = float(
+    df["Difficulty"].iloc[-1]
+)
+
+mean_uncertainty = float(
+    df["Uncertainty"].mean()
+)
+
+mean_skill = float(
+    df["Estimated Skill"].mean()
+)
 
 
 st.markdown(
-    f"""
-    <div class="info-card">
+    '<div class="section-title">The adaptation at a glance</div>',
+    unsafe_allow_html=True,
+)
 
-    <b>Active controller:</b> {active_method}<br>
-    <b>Execution mode:</b> {status}<br>
-    <b>Target success rate:</b> 0.70<br>
-    <b>Player condition:</b>
-    skill={initial_skill:.2f},
-    learning={learning_rate:.4f},
-    fatigue={fatigue_rate:.4f},
-    noise={noise_std:.2f}
-
+st.markdown(
+    """
+    <div class="section-subtitle">
+        A compact view of how the controller responds to the simulated
+        player state while tracking the target performance region.
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 
-# 3D PLAYER-DIFFICULTY LANDSCAPE
+m1, m2, m3, m4, m5 = st.columns(5)
+
+
+def metric_card(
+    label,
+    value,
+    note,
+):
+
+    return dedent(
+        f"""
+        <div class="metric-card">
+
+            <div class="metric-label">
+                {label}
+            </div>
+
+            <div class="metric-value">
+                {value}
+            </div>
+
+            <div class="metric-note">
+                {note}
+            </div>
+
+        </div>
+        """
+    )
+
+
+with m1:
+
+    st.markdown(
+        metric_card(
+            "Mean win rate",
+            f"{mean_win:.3f}",
+            "Target = 0.700",
+        ),
+        unsafe_allow_html=True,
+    )
+
+with m2:
+
+    st.markdown(
+        metric_card(
+            "Target error",
+            f"{target_error:.3f}",
+            "Absolute deviation",
+        ),
+        unsafe_allow_html=True,
+    )
+
+with m3:
+
+    st.markdown(
+        metric_card(
+            "Current difficulty",
+            f"{final_difficulty:.3f}",
+            "Latest policy action",
+        ),
+        unsafe_allow_html=True,
+    )
+
+with m4:
+
+    st.markdown(
+        metric_card(
+            "Estimated skill",
+            f"{mean_skill:.3f}",
+            "Mean trajectory estimate",
+        ),
+        unsafe_allow_html=True,
+    )
+
+with m5:
+
+    st.markdown(
+        metric_card(
+            "Uncertainty",
+            f"{mean_uncertainty:.3f}",
+            "Mean state uncertainty",
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+# ============================================================
+# "WHERE DIFFICULTY LEARNS"
+# ============================================================
 
 st.markdown(
-    '<div class="section-title">🌐 3D Adaptive Difficulty Landscape</div>',
+    '<div class="section-title">Where difficulty learns</div>',
     unsafe_allow_html=True,
 )
 
 st.markdown(
     """
-    <div class="section-caption">
-    Interactive surface showing the simulated relationship between
-    player skill, difficulty and expected success probability.
-    The adaptation trajectory is overlaid on the landscape.
+    <div class="section-subtitle">
+        The trajectory connects player capability, selected difficulty,
+        and observed success. Rotate, zoom and hover to inspect the policy.
     </div>
     """,
     unsafe_allow_html=True,
@@ -1403,148 +1440,183 @@ st.markdown(
 skills = np.linspace(
     0.05,
     0.95,
-    40,
+    45,
 )
 
-difficulties = np.linspace(
+difficulty_axis = np.linspace(
     0.05,
     0.95,
-    40,
+    45,
 )
 
 X, Y = np.meshgrid(
     skills,
-    difficulties,
+    difficulty_axis,
 )
 
-Z = 1.0 / (
-    1.0
-    + np.exp(
-        8.0 * (
-            Y - X
+Z = (
+    1
+    /
+    (
+        1
+        +
+        np.exp(
+            8 * (Y - X)
         )
     )
 )
 
-fig3d = go.Figure()
 
-fig3d.add_trace(
+fig = go.Figure()
+
+
+# Soft pastel surface
+fig.add_trace(
     go.Surface(
         x=X,
         y=Y,
         z=Z,
         colorscale=[
-            [0.00, "#171A3A"],
-            [0.20, "#4138A8"],
-            [0.45, "#0066FF"],
-            [0.70, "#00D9FF"],
-            [1.00, "#FF4FD8"],
+            [0.00, "#20263A"],
+            [0.25, "#59627D"],
+            [0.50, "#9EA9C8"],
+            [0.75, "#B7D8D0"],
+            [1.00, "#E2D5EA"],
         ],
-        opacity=0.78,
+        opacity=0.72,
         showscale=True,
         colorbar=dict(
             title="Success",
             tickformat=".0%",
+            tickfont=dict(
+                color="#CBD2DE"
+            ),
+            titlefont=dict(
+                color="#CBD2DE"
+            ),
         ),
         hovertemplate=(
-            "Skill: %{x:.2f}<br>"
-            "Difficulty: %{y:.2f}<br>"
-            "Success: %{z:.1%}"
+            "Skill %{x:.2f}"
+            "<br>"
+            "Difficulty %{y:.2f}"
+            "<br>"
+            "Success %{z:.1%}"
             "<extra></extra>"
         ),
+        name="Performance field",
     )
 )
 
-fig3d.add_trace(
+
+# Adaptation path
+fig.add_trace(
     go.Scatter3d(
-        x=df[
-            "True Skill"
-        ],
-        y=df[
-            "Difficulty"
-        ],
-        z=df[
-            "Win Rate"
-        ],
+        x=df["True Skill"],
+        y=df["Difficulty"],
+        z=df["Win Rate"],
         mode="lines+markers",
         line=dict(
+            color="#F2F4F8",
             width=7,
-            color="#FFFFFF",
         ),
         marker=dict(
             size=4,
-            color=np.arange(
-                len(df)
-            ),
-            colorscale="Turbo",
-            showscale=True,
-            colorbar=dict(
-                title="Step"
-            ),
+            color=df["Step"],
+            colorscale=[
+                [0.00, "#AAB5FF"],
+                [0.50, "#C5DAD4"],
+                [1.00, "#E6CFE5"],
+            ],
+            showscale=False,
         ),
-        name="Adaptation trajectory",
+        name="Policy trajectory",
+        customdata=df[
+            [
+                "Step",
+                "Estimated Skill",
+                "Uncertainty",
+            ]
+        ].values,
         hovertemplate=(
-            "Step: %{customdata[0]}<br>"
-            "True Skill: %{x:.2f}<br>"
-            "Difficulty: %{y:.2f}<br>"
-            "Win Rate: %{z:.1%}"
+            "Step %{customdata[0]}"
+            "<br>"
+            "True skill %{x:.3f}"
+            "<br>"
+            "Difficulty %{y:.3f}"
+            "<br>"
+            "Win rate %{z:.1%}"
+            "<br>"
+            "Estimated skill %{customdata[1]:.3f}"
+            "<br>"
+            "Uncertainty %{customdata[2]:.3f}"
             "<extra></extra>"
         ),
-        customdata=df[
-            ["Step"]
-        ].values,
     )
 )
 
-fig3d.update_layout(
-    height=680,
+
+fig.update_layout(
+    height=690,
     margin=dict(
         l=0,
         r=0,
-        t=20,
+        t=10,
         b=0,
     ),
     paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(
+        color="#DCE2EA"
+    ),
     scene=dict(
+        bgcolor="#0B0F19",
+
         xaxis=dict(
-            title="Player Skill",
-            backgroundcolor="#090C19",
-            gridcolor="#252B48",
-            color="#B8C2DD",
+            title="Player capability",
+            color="#AEB7C7",
+            gridcolor="#252D3D",
+            zerolinecolor="#252D3D",
         ),
+
         yaxis=dict(
             title="Difficulty",
-            backgroundcolor="#090C19",
-            gridcolor="#252B48",
-            color="#B8C2DD",
+            color="#AEB7C7",
+            gridcolor="#252D3D",
+            zerolinecolor="#252D3D",
         ),
+
         zaxis=dict(
-            title="Success Probability",
-            backgroundcolor="#090C19",
-            gridcolor="#252B48",
-            color="#B8C2DD",
+            title="Observed success",
+            color="#AEB7C7",
+            gridcolor="#252D3D",
+            zerolinecolor="#252D3D",
         ),
-    ),
-    font=dict(
-        color="#E9EDFF",
     ),
 )
 
 st.plotly_chart(
-    fig3d,
+    fig,
     use_container_width=True,
 )
 
 
-# ------------------------------------------------------------
-# TRAJECTORY CHARTS
-# ------------------------------------------------------------
+# ============================================================
+# ADAPTATION DYNAMICS
+# ============================================================
 
 st.markdown(
-    '<div class="section-title">📈 Adaptation Dynamics</div>',
+    '<div class="section-title">Inside the adaptation loop</div>',
     unsafe_allow_html=True,
 )
+
+st.markdown(
+    """
+    <div class="section-subtitle">
+        How the selected difficulty and target performance evolve over the episode.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 left, right = st.columns(2)
 
@@ -1558,33 +1630,30 @@ with left:
             x=df["Step"],
             y=df["Difficulty"],
             mode="lines",
-            name="Difficulty",
             line=dict(
-                color="#7C5CFF",
-                width=4,
+                color="#AAB5FF",
+                width=3.5,
             ),
-            fill="tozeroy",
-            fillcolor=(
-                "rgba(124,92,255,0.10)"
-            ),
+            name="Difficulty",
         )
     )
 
     fig.update_layout(
-        title="Difficulty Adaptation",
+        title="Difficulty trajectory",
         height=390,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(9,12,25,0.8)",
+        plot_bgcolor="#0B0F19",
         font=dict(
-            color="#E9EDFF"
+            color="#DCE2EA"
         ),
-        xaxis_title="Game Step",
-        yaxis_title="Difficulty",
+        xaxis=dict(
+            title="Step",
+            gridcolor="#252D3D",
+        ),
         yaxis=dict(
-            range=[0, 1]
-        ),
-        legend=dict(
-            orientation="h"
+            title="Difficulty",
+            range=[0, 1],
+            gridcolor="#252D3D",
         ),
     )
 
@@ -1603,34 +1672,38 @@ with right:
             x=df["Step"],
             y=df["Win Rate"],
             mode="lines",
-            name="Rolling Win Rate",
             line=dict(
-                color="#00D9FF",
-                width=4,
+                color="#B7D8D0",
+                width=3.5,
             ),
+            name="Rolling win rate",
         )
     )
 
     fig.add_hline(
         y=0.70,
-        line_dash="dash",
-        line_color="#FF4FD8",
-        annotation_text="Target 70%",
-        annotation_position="top left",
+        line_dash="dot",
+        line_color="#E4D4E7",
+        annotation_text="Target · 70%",
+        annotation_font_color="#E4D4E7",
     )
 
     fig.update_layout(
-        title="Target Performance Tracking",
+        title="Target performance tracking",
         height=390,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(9,12,25,0.8)",
+        plot_bgcolor="#0B0F19",
         font=dict(
-            color="#E9EDFF"
+            color="#DCE2EA"
         ),
-        xaxis_title="Game Step",
-        yaxis_title="Rolling Win Rate",
+        xaxis=dict(
+            title="Step",
+            gridcolor="#252D3D",
+        ),
         yaxis=dict(
-            range=[0, 1]
+            title="Rolling win rate",
+            range=[0, 1],
+            gridcolor="#252D3D",
         ),
     )
 
@@ -1640,11 +1713,28 @@ with right:
     )
 
 
-# ------------------------------------------------------------
+# ============================================================
 # PLAYER STATE
-# ------------------------------------------------------------
+# ============================================================
+
+st.markdown(
+    '<div class="section-title">The player state behind the policy</div>',
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div class="section-subtitle">
+        The controller does not observe a static player. Skill estimates,
+        uncertainty and recent outcomes evolve throughout the episode.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 left, right = st.columns(2)
+
 
 with left:
 
@@ -1655,9 +1745,9 @@ with left:
             x=df["Step"],
             y=df["True Skill"],
             mode="lines",
-            name="True Skill",
+            name="True skill",
             line=dict(
-                color="#FF4FD8",
+                color="#E6CFE5",
                 width=3,
             ),
         )
@@ -1668,9 +1758,9 @@ with left:
             x=df["Step"],
             y=df["Estimated Skill"],
             mode="lines",
-            name="Estimated Skill",
+            name="Estimated skill",
             line=dict(
-                color="#00D9FF",
+                color="#AAB5FF",
                 width=3,
                 dash="dot",
             ),
@@ -1678,17 +1768,21 @@ with left:
     )
 
     fig.update_layout(
-        title="Player Skill Estimation",
+        title="Skill estimation",
         height=390,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(9,12,25,0.8)",
+        plot_bgcolor="#0B0F19",
         font=dict(
-            color="#E9EDFF"
+            color="#DCE2EA"
         ),
-        xaxis_title="Game Step",
-        yaxis_title="Skill",
+        xaxis=dict(
+            title="Step",
+            gridcolor="#252D3D",
+        ),
         yaxis=dict(
-            range=[0, 1]
+            title="Skill",
+            range=[0, 1],
+            gridcolor="#252D3D",
         ),
     )
 
@@ -1709,28 +1803,30 @@ with right:
             mode="lines",
             name="Uncertainty",
             line=dict(
-                color="#FFC857",
+                color="#D8C8A8",
                 width=3,
             ),
             fill="tozeroy",
-            fillcolor=(
-                "rgba(255,200,87,0.10)"
-            ),
+            fillcolor="rgba(216,200,168,0.07)",
         )
     )
 
     fig.update_layout(
-        title="Player-State Uncertainty",
+        title="Uncertainty over time",
         height=390,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(9,12,25,0.8)",
+        plot_bgcolor="#0B0F19",
         font=dict(
-            color="#E9EDFF"
+            color="#DCE2EA"
         ),
-        xaxis_title="Game Step",
-        yaxis_title="Uncertainty",
+        xaxis=dict(
+            title="Step",
+            gridcolor="#252D3D",
+        ),
         yaxis=dict(
-            range=[0, 1]
+            title="Uncertainty",
+            range=[0, 1],
+            gridcolor="#252D3D",
         ),
     )
 
@@ -1740,30 +1836,51 @@ with right:
     )
 
 
-# ERROR + REWARD
+# ============================================================
+# RESPONSE SIGNALS
+# ============================================================
+
+st.markdown(
+    '<div class="section-title">Response signals</div>',
+    unsafe_allow_html=True,
+)
 
 left, right = st.columns(2)
 
+
 with left:
 
-    fig = px.area(
-        df,
-        x="Step",
-        y="Error Rate",
-        title="Simulated Error Rate",
-    )
+    fig = go.Figure()
 
-    fig.update_traces(
-        line_color="#FF6B9A",
-        fillcolor="rgba(255,107,154,0.15)",
+    fig.add_trace(
+        go.Scatter(
+            x=df["Step"],
+            y=df["Error Rate"],
+            mode="lines",
+            line=dict(
+                color="#D7B8C9",
+                width=3,
+            ),
+            name="Error rate",
+        )
     )
 
     fig.update_layout(
+        title="Observed error rate",
         height=350,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(9,12,25,0.8)",
+        plot_bgcolor="#0B0F19",
         font=dict(
-            color="#E9EDFF"
+            color="#DCE2EA"
+        ),
+        xaxis=dict(
+            title="Step",
+            gridcolor="#252D3D",
+        ),
+        yaxis=dict(
+            title="Error rate",
+            range=[0, 1],
+            gridcolor="#252D3D",
         ),
     )
 
@@ -1775,24 +1892,36 @@ with left:
 
 with right:
 
-    fig = px.line(
-        df,
-        x="Step",
-        y="Reward",
-        title="Step Reward",
-    )
+    fig = go.Figure()
 
-    fig.update_traces(
-        line_color="#7CFFCB",
-        line_width=3,
+    fig.add_trace(
+        go.Scatter(
+            x=df["Step"],
+            y=df["Reward"],
+            mode="lines",
+            line=dict(
+                color="#B7D8D0",
+                width=3,
+            ),
+            name="Reward",
+        )
     )
 
     fig.update_layout(
+        title="Policy reward",
         height=350,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(9,12,25,0.8)",
+        plot_bgcolor="#0B0F19",
         font=dict(
-            color="#E9EDFF"
+            color="#DCE2EA"
+        ),
+        xaxis=dict(
+            title="Step",
+            gridcolor="#252D3D",
+        ),
+        yaxis=dict(
+            title="Reward",
+            gridcolor="#252D3D",
         ),
     )
 
@@ -1802,78 +1931,117 @@ with right:
     )
 
 
-# RESEARCH INTERPRETATION
+# ============================================================
+# INTERPRETATION
+# ============================================================
 
 st.markdown(
-    '<div class="section-title">🔬 What the Simulation Shows</div>',
+    '<div class="section-title">What the trajectory reveals</div>',
     unsafe_allow_html=True,
 )
 
-col1, col2, col3 = st.columns(3)
+a, b, c = st.columns(3)
 
-with col1:
+
+with a:
 
     st.markdown(
-        f"""
-        <div class="info-card">
+        dedent(
+            f"""
+            <div class="glass-card">
 
-        <b>Target Tracking</b><br><br>
+                <b>Target tracking</b>
 
-        The simulated player achieved a mean
-        rolling win rate of
-        <b>{mean_win:.3f}</b>,
-        against the target of <b>0.700</b>.
+                <br><br>
 
-        </div>
-        """,
+                Mean rolling win rate:
+                <b>{mean_win:.3f}</b>
+
+                <br>
+
+                Target:
+                <b>0.700</b>
+
+                <br>
+
+                Absolute error:
+                <b>{target_error:.3f}</b>
+
+            </div>
+            """
+        ),
         unsafe_allow_html=True,
     )
 
 
-with col2:
+with b:
 
     st.markdown(
-        f"""
-        <div class="info-card">
+        dedent(
+            f"""
+            <div class="glass-card">
 
-        <b>Adaptive Difficulty</b><br><br>
+                <b>Adaptive response</b>
 
-        Difficulty moved through a mean level
-        of <b>{mean_difficulty:.3f}</b>
-        and ended at
-        <b>{final_difficulty:.3f}</b>.
+                <br><br>
 
-        </div>
-        """,
+                Final difficulty:
+                <b>{final_difficulty:.3f}</b>
+
+                <br>
+
+                Mean difficulty:
+                <b>{df["Difficulty"].mean():.3f}</b>
+
+                <br>
+
+                Mean change:
+                <b>{df["Difficulty Change"].mean():.4f}</b>
+
+            </div>
+            """
+        ),
         unsafe_allow_html=True,
     )
 
 
-with col3:
+with c:
 
     st.markdown(
-        f"""
-        <div class="info-card">
+        dedent(
+            f"""
+            <div class="glass-card">
 
-        <b>Uncertainty</b><br><br>
+                <b>State confidence</b>
 
-        Mean player-state uncertainty was
-        <b>{mean_uncertainty:.3f}</b>.
-        The trajectory shows how confidence
-        changes as evidence accumulates.
+                <br><br>
 
-        </div>
-        """,
+                Mean uncertainty:
+                <b>{mean_uncertainty:.3f}</b>
+
+                <br>
+
+                Mean estimated skill:
+                <b>{mean_skill:.3f}</b>
+
+                <br>
+
+                Episode reward:
+                <b>{total_reward:.2f}</b>
+
+            </div>
+            """
+        ),
         unsafe_allow_html=True,
     )
 
 
-# ------------------------------------------------------------
-# RAW TRAJECTORY
-# ------------------------------------------------------------
+# ============================================================
+# TRAJECTORY DATA
+# ============================================================
 
 with st.expander(
-    "📋 Inspect trajectory data"
+    "Inspect the trajectory"
 ):
 
     st.dataframe(
@@ -1883,49 +2051,44 @@ with st.expander(
     )
 
 
-# ------------------------------------------------------------
-# DOWNLOAD
-# ------------------------------------------------------------
-
-csv = df.to_csv(
+csv_data = df.to_csv(
     index=False
 ).encode(
     "utf-8"
 )
 
 st.download_button(
-    label="⬇️ Download Simulation Trajectory",
-    data=csv,
-    file_name="gadda_interactive_trajectory.csv",
+    "Download trajectory data",
+    data=csv_data,
+    file_name="gadda_demo_trajectory.csv",
     mime="text/csv",
 )
 
 
-
+# ============================================================
 # FOOTER
+# ============================================================
 
 st.markdown(
-    """
-    <div class="footer">
+    dedent(
+        """
+        <div class="footer">
 
-        <b>GADDA</b> · Generalizable & Uncertainty-Aware
-        Dynamic Difficulty Adjustment using Reinforcement Learning
+            <b>GADDA</b> · Generalizable &amp; Uncertainty-Aware
+            Dynamic Difficulty Adjustment using Reinforcement Learning
 
-        <br><br>
+            <br>
 
-        Interactive research demonstration ·
-        Simulation-based evaluation ·
-        PPO / Gymnasium
+            Interactive research demonstration · Simulation environment · PPO
 
-        <br><br>
+            <br><br>
 
-        <i>
-        This interactive interface is a demonstration layer
-        and does not replace the controlled experiments reported
-        in the research manuscript.
-        </i>
+            This interface is a demonstration layer.
+            Controlled experimental results reported in the manuscript
+            are generated separately under the defined evaluation protocol.
 
-    </div>
-    """,
+        </div>
+        """
+    ),
     unsafe_allow_html=True,
 )
