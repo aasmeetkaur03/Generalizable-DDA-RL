@@ -245,8 +245,8 @@ GADDA-DDA-RL/
 ├── results/
 ├── figures/
 ├── models/
-├── .gitignore
-└── READ.md
+├──.gitignore
+└── README.md
 ```
 
 # 🛠️ Technologies
